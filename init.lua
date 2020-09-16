@@ -2,20 +2,33 @@ MQTTConnection_state = false ;
 PINGTimer_Presence  = false;
 WIFI_Number     = 0 ;
 Disconnect_Count= 0;
+Debug_Console   = false;
 
 
 -------****************************************************************
  wifi.eventmon.register(wifi.eventmon.STA_DISCONNECTED, function(T)
- if ((MQTTConnection_state == true) and (mqttClient:close() == true)) then
-    print("MQTTClient Closed");
+ if (MQTTConnection_state and mqttClient:close()) then
+    if Debug_Console then
+        print("MQTTClient Closed"); 
+    end-- Debug console
     MQTTConnection_state = false;
  end
  if (PINGTimer_Presence == true ) then
-    pingtimer:unregister();
+if Debug_Console then
+ print("Ping timer removal"); 
+end-- Debug console
     PINGTimer_Presence = false;
+    pingtimer:unregister();
  end
+ 
+ if Debug_Console then
+    print("PINGTimer_Presence: ",PINGTimer_Presence);
+    print("MQTTConnection_state: ",MQTTConnection_state); 
+ end-- Debug console
+ if Debug_Console then
  print("\n\tSTA - DISCONNECTED".."\n\tSSID: "..T.SSID.."\n\tBSSID: "..
  T.BSSID.."\n\treason: "..T.reason)
+ end-- Debug console
  Disconnect_Count = Disconnect_Count + 1;
  if(Disconnect_Count >= 50) then
      if (T.reason == 201)  then   --If Hotspot is not available then switch 2 second one
@@ -29,39 +42,50 @@ Disconnect_Count= 0;
 
 --******************** STA Connected **********************************
  wifi.eventmon.register(wifi.eventmon.STA_CONNECTED, function(T)
+ if Debug_Console then
  print("\n\tSTA - CONNECTED".."\n\tSSID: "..T.SSID.."\n\tBSSID: "..
  T.BSSID.."\n\tChannel: "..T.channel)
+ end-- Debug console
  Disconnect_Count = 0;
---[[ tmr.create():alarm(800, tmr.ALARM_SINGLE, function()
- --Connecting to mqtt broker
- mqttClient:connect(server, port, false,Connection_Established,Connection_Fail);
- end)]]
+--Checking for internet presence and taking decisions according to that
     pingtimer = tmr.create();
     if pingtimer then
-        Timer_Presence = true;
---        pingtimer:alarm(10000, tmr.ALARM_AUTO, Ping_Callback())
-        pingtimer:alarm(10000, tmr.ALARM_AUTO, function()
+        PINGTimer_Presence = true;
+        pingtimer:alarm(3000, tmr.ALARM_AUTO, function()
         net.ping("www.nodemcu.com",1, function (b, ip, sq, tm) 
         if ip then 
 ---If Internet is present then execute this
             if(b == 32) then 
-            print("Internet: OK");
-            if not(MQTTConnection_state) then
+            if Debug_Console then
+                print("Internet: OK");
+            end-- Debug console
+            if (not(MQTTConnection_state)) then
+              if Debug_Console then
+                print("MQTTClient Connected"); 
+              end-- Debug console
               mqttClient:connect(server, port, false,Connection_Established,Connection_Fail);    
             end
 ---- If internet is not present then execte this             
             else
-              print("Internet: Not OK");   
-              if ((mqttClient:close() == true) and (MQTTConnection_state == true)) then
-                print("MQTTClient Closed");
+            if Debug_Console then
+              print("Internet: Not OK\n","MQTTConnection_state: ",MQTTConnection_state); 
+            end  ---- Debug console
+              if ( MQTTConnection_state  and (mqttClient:close())) then
+                if Debug_Console then
+                 print("MQTTClient Closed");
+                end-- Debug console
                 MQTTConnection_state = false;
               end
             end--Internet presence 
+            if Debug_Console then
+             print("PINGTimer_Presence: ",PINGTimer_Presence);
+             print("MQTTConnection_state: ",MQTTConnection_state);
+            end -- Debug console
         end--ip is present    
         end)--ping callback function
     end)
 
-        print("Timer created");
+--        print("Timer created");
     end    
  end) --function end
 
@@ -84,9 +108,9 @@ port            = 1883
 publish_topic   = "sri8352/feeds/srikanth.readback" -- e.g. "Nivya151/feeds/potValue"
 subscribe_topic = "sri8352/feeds/srikanth.home" -- e.g. "Nivya151/feeds/ledBrightness"
 aio_username    = "sri8352"           -- e.g. "Nivya151"  
-aio_key         = "aio_uThs68F7phVYFewXHb2TcRiTJ3y2"
+aio_key         = "aio_rqJu55ixhknefQj7jrLi3ghQF4hO"
 client_id       = "SriNodemcu"
-Keep_alive      = 10
+Keep_alive      = 5
 
 
 --*********************************************************************
@@ -160,7 +184,9 @@ station_config[1] = {ssid='Kalavathi',pwd='9948838710',save=false,auto=true};
 wifi.setmode(wifi.STATION,true)
 
     if(wifi.sta.config(station_config[WIFI_Number]) == true) then 
-     print("WiFi: OK\n");
+     if Debug_Console then
+         print("WiFi: OK\n");
+     end -- Debug console
      dofile("Main_Application.lua");
     end
 end

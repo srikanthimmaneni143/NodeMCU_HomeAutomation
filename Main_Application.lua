@@ -6,7 +6,9 @@ mqttClient = mqtt.Client(client_id, Keep_alive , aio_username, aio_key)
 mqttClient:on("message", function(client, topic, data) 
 --  print(topic .. ":" ) 
   if data ~= nil then
-    print("received : ", data);
+    if Debug_Console then
+        print("received : ", data);
+    end -- -- Debug console
     if (data == "LIGHT_OFF:HOME") then
         gpio.write(Lightpin, 1);
         RestartUpdate_Data = bit.clear(RestartUpdate_Data, LightBit_Pos)
@@ -40,8 +42,10 @@ mqttClient:on("message", function(client, topic, data)
         RestartUpdate_Data = bit.set(RestartUpdate_Data, FanBit_Pos)
     end
     if (data == "?Are you connected?") then
-        mqttClient:publish(publish_topic, ":Yes, Iam:" , 0, 0, function(client) 
---           print("Reply for the request of Connection status ") 
+        mqttClient:publish(publish_topic, ":Yes, Iam:" , 0, 0, function(client)     
+          if Debug_Console then
+           print("Reply for the request of Connection status "); 
+          end -- -- Debug console
         end)
     end
     if (data == "?Send me the status of all pins?") then
@@ -72,7 +76,9 @@ mqttClient:on("message", function(client, topic, data)
         end
         
         mqttClient:publish(publish_topic, str , 0, 0, function(client) 
---           print("Asking for the status of pins and sent is '"..str.."'"); 
+           if Debug_Console then
+            print("Asking for the status of pins and sent is '"..str.."'"); 
+           end--- Debug console
         end)
     end
   
@@ -82,11 +88,15 @@ end)--Message receive event function
 
 --Callback function on Connection establish
 function Connection_Established(client)
-       print("MQTT Broker Connection: OK");
+       if Debug_Console then
+        print("MQTT Broker Connection: OK");
+       end--- Debug console
        MQTTConnection_state = true;
        mqttClient:subscribe(subscribe_topic,0,function(cli) 
-                                                print("Subsribe: OK");
-                                                end)
+       if Debug_Console then
+         print("Subsribe: OK");
+       end --- Debug console
+       end)-- Function 
 end
 
  --On failure it will execute
