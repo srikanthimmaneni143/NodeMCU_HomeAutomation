@@ -1,6 +1,37 @@
 
 -- init mqtt client with logins, keepalive timer 10s
-mqttClient = mqtt.Client(client_id, Keep_alive , aio_username, aio_key)
+mqttClient = mqtt.Client(client_id, Keep_alive , aio_username, aio_key);
+
+mqttClient:lwt(publish_topic, "Unexpected offline", 0, 0);
+
+mqttClient:on("connect", function(client) 
+    if Debug_Console then
+        print ("Client connected");
+    end -- -- Debug console
+end)
+
+function Ping_Response()
+    net.ping("8.8.4.4",1, function (b, ip, sq, tm) 
+        if ip then
+            if (b  > 0) then
+                MQTTCONNECT();
+                Ping_Timer:stop();
+            end  
+            print(("%d bytes from %s, icmp_seq=%d time=%dms"):format(b, ip, sq, tm)) else print("Invalid IP address") end 
+    end) 
+
+end
+
+--If device got disconnected
+mqttClient:on("offline", function(client) 
+    if Debug_Console then
+        print ("Client offline");   
+    end -- -- Debug console
+    MQTTConnection_state = false;
+    if WIFI_Status then
+    Ping_Timer:start();
+    end
+end)
 
 -- on message receive event
 mqttClient:on("message", function(client, topic, data) 
@@ -41,15 +72,15 @@ mqttClient:on("message", function(client, topic, data)
         gpio.write(Fanpin, 0);
         RestartUpdate_Data = bit.set(RestartUpdate_Data, FanBit_Pos)
     end
-    if (data == "?Are you connected?") then
-        mqttClient:publish(publish_topic, ":Yes, Iam:" , 0, 0, function(client)     
+    if (data == "ping?") then
+        mqttClient:publish(publish_topic, "?OK" , 0, 0, function(client)     
           if Debug_Console then
-           print("Reply for the request of Connection status "); 
+           print("Reply for the request of Connection ping "); 
           end -- -- Debug console
         end)
     end
-    if (data == "?Send me the status of all pins?") then
-        str = ":Node pins status:" ;
+    if (data == "Status_Please?") then
+        str = "?Status_Back" ;
 --Light
         if(gpio.read(Lightpin) == 1) then
         str = str .. ':LIGHT_OFF:' ;
@@ -85,27 +116,6 @@ mqttClient:on("message", function(client, topic, data)
   end --if main
   rtcmem.write32(RestartUpdate_Address, RestartUpdate_Data);
 end)--Message receive event function
-
---Callback function on Connection establish
-function Connection_Established(client)
-       if Debug_Console then
-        print("MQTT Broker Connection: OK");
-       end--- Debug console
-       MQTTConnection_state = true;
-       mqttClient:subscribe(subscribe_topic,0,function(cli) 
-       if Debug_Console then
-         print("Subsribe: OK");
-       end --- Debug console
-       end)-- Function 
-end
-
- --On failure it will execute
-function Connection_Fail(client, reason)
---      print("CLient:"..client,"failed reason: " .. reason)
-      MQTTConnection_state = false;
-end
-
-
 
 --Support funcitons
 function makeClientid() 
